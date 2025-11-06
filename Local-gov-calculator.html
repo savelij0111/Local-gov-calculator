@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Калькулятор времени вызова</title>
+  <style>
+    :root {
+      --bg: #111;
+      --fg: #eee;
+      --accent: #4caf50;
+      --card: #1a1a1a;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f6f6f6;
+        --fg: #111;
+        --accent: #388e3c;
+        --card: #fff;
+      }
+    }
+
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      padding: 20px;
+      font-size: 18px;
+      max-width: 600px;
+      margin: auto;
+      transition: background 0.3s, color 0.3s;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 18px;
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 6px;
+      border: none;
+      outline: none;
+    }
+    input {
+      background: var(--card);
+      color: var(--fg);
+      padding-left: 12px;
+    }
+    button {
+      background: var(--accent);
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s, transform 0.1s;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    button:active {
+      transform: scale(0.98);
+    }
+    #output {
+      margin-top: 20px;
+      font-weight: bold;
+      line-height: 1.6;
+      background: var(--card);
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+      from {opacity: 0; transform: translateY(5px);}
+      to {opacity: 1; transform: translateY(0);}
+    }
+  </style>
+</head>
+<body>
+  <h2>🕓 Калькулятор времени вызова</h2>
+
+  <label>Ваш номер в очереди:</label>
+  <input type="number" id="yourNumber" placeholder="Например, 876" inputmode="numeric">
+
+  <label>Машин прошло за 24 часа:</label>
+  <input type="number" id="past24h" placeholder="Например, 637" inputmode="numeric">
+
+  <label>Машин направлено за последний час:</label>
+  <input type="number" id="lastHour" placeholder="Например, 45" inputmode="numeric">
+
+  <button type="button" id="calcBtn">Рассчитать</button>
+
+  <div id="output"></div>
+
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      const inputs = ["yourNumber", "past24h", "lastHour"];
+      const output = document.getElementById("output");
+      const btn = document.getElementById("calcBtn");
+
+      // Восстановление данных
+      inputs.forEach(id => {
+        const el = document.getElementById(id);
+        el.value = localStorage.getItem(id) || "";
+        el.addEventListener("input", () => localStorage.setItem(id, el.value));
+      });
+
+      // Автопереход по Enter
+      inputs.forEach((id, idx) => {
+        const el = document.getElementById(id);
+        el.addEventListener("keydown", e => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            if (idx < inputs.length - 1)
+              document.getElementById(inputs[idx + 1]).focus();
+            else btn.click();
+          }
+        });
+      });
+
+      document.getElementById("yourNumber").focus();
+
+      btn.addEventListener("click", handleClick);
+      btn.addEventListener("touchstart", handleClick, { passive: true });
+
+      function handleClick(e) {
+  e.preventDefault();
+
+  const yourNumber = parseFloat(document.getElementById("yourNumber").value);
+  const past24h = parseFloat(document.getElementById("past24h").value);
+
+  const lastHourInput = document.getElementById("lastHour").value;
+  const lastHour = lastHourInput === "" ? 0 : parseFloat(lastHourInput);
+
+  if (isNaN(yourNumber) || isNaN(past24h) || yourNumber <= 0 || past24h <= 0 || lastHour < 0) {
+    output.innerText = "⚠️ Введите корректные значения.";
+    return;
+  }
+
+  const avgPerHour = past24h / 24;
+  const adjustedRate = (avgPerHour + lastHour) / 2;
+
+  // Проверка на аномальные данные
+  if (lastHour > avgPerHour * 10) {
+    alert("❗ Последний час выглядит аномально большим. Проверьте данные.");
+  }
+
+  const hoursToWait = yourNumber / adjustedRate;
+
+  const now = new Date();
+  const callTime = new Date(now.getTime() + hoursToWait * 3600 * 1000);
+
+  const dateStr = callTime.toLocaleDateString('ru-RU');
+  const timeStr = callTime.toLocaleTimeString('ru-RU');
+
+  let waitStr = hoursToWait < 1
+    ? `${(hoursToWait * 60).toFixed(0)} минут`
+    : `${hoursToWait.toFixed(1)} часов`;
+
+  output.innerHTML = `
+    📅 <strong>Примерное время вызова:</strong> ${dateStr}, ${timeStr}<br>
+    ⏳ <strong>Осталось:</strong> ${waitStr}<br>
+    🚗 <strong>Скорость обработки:</strong> ${adjustedRate.toFixed(2)} машин/час
+  `;
+}
+    });
+  </script>
+</body>
+</html>
